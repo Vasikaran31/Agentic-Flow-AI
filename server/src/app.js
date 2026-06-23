@@ -25,8 +25,20 @@ initSocket(httpServer);
 
 // Global Middleware
 app.use(helmet());
+const allowedOrigins = [
+  env.CLIENT_URL,
+  'http://localhost:3000',
+];
 app.use(cors({
-  origin: env.CLIENT_URL,
+  origin: function (origin, callback) {
+    // Allow requests with no origin (curl, mobile, Render health checks)
+    if (!origin) return callback(null, true);
+    // Allow any Vercel deployment (production + preview)
+    if (origin.endsWith('.vercel.app') || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    callback(new Error('Not allowed by CORS'));
+  },
   credentials: true,
 }));
 app.use(morgan('dev'));
@@ -60,7 +72,7 @@ app.use(errorHandler);
 const startServer = async () => {
   await connectDB();
   const PORT = env.PORT;
-  httpServer.listen(PORT, () => {
+  httpServer.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Server running on port ${PORT} in ${env.NODE_ENV} mode`);
   });
 };
